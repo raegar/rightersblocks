@@ -1,6 +1,6 @@
 # How the Voxel Block System Works
 
-> A plain-English walkthrough of the architecture behind the demo — no prior engine knowledge required.
+> A  walkthrough of the architecture behind the RightersBlocks Voxel system
 
 ---
 
