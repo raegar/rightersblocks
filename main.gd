@@ -28,7 +28,7 @@ func _input(event: InputEvent) -> void:
 		var delta: Vector2 = event.position - _last_mouse
 		_last_mouse = event.position
 		_orbit_angle_h -= delta.x * 0.005
-		_orbit_angle_v = clamp(_orbit_angle_v - delta.y * 0.005, 0.1, 1.4)
+		_orbit_angle_v = clamp(_orbit_angle_v + delta.y * 0.005, 0.1, 1.4)
 		_update_camera()
 
 	# Scroll to zoom
