@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How the Voxel Block System Works</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #252a38;
+    --accent: #7ee8a2;
+    --accent2: #f7c948;
+    --accent3: #e87e7e;
+    --text: #d4dbe8;
+    --muted: #6b7591;
+    --heading: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 300;
+    font-size: 17px;
+    line-height: 1.75;
+  }
+
+  .page {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+  }
+
+  .kicker {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    color: var(--heading);
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    font-style: italic;
+    border-left: 3px solid var(--border);
+    padding-left: 16px;
+    margin-bottom: 56px;
+  }
+
+  .section {
+    margin-bottom: 52px;
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--heading);
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  h2 .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  p { margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 20px 0;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .callout strong {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--accent2);
+    font-style: normal;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .analogy {
+    border-left-color: var(--accent);
+  }
+
+  .analogy strong { color: var(--accent); }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 24px 0;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    position: relative;
+  }
+
+  .flow-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: -8px;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .flow-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .flow-body {
+    padding-bottom: 24px;
+  }
+
+  .flow-body .label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--heading);
+    margin-bottom: 4px;
+  }
+
+  .flow-body p {
+    font-size: 15px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .pill {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+  }
+
+  .pill.green { border-color: var(--accent); color: var(--accent); }
+  .pill.yellow { border-color: var(--accent2); color: var(--accent2); }
+  .pill.red { border-color: var(--accent3); color: var(--accent3); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .summary-card .card-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .summary-card .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--heading);
+    margin-bottom: 6px;
+  }
+
+  .summary-card p {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  @media (max-width: 520px) {
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">Developer Reference</div>
+  <h1>How the Voxel Block System Works</h1>
+  <p class="subtitle">A plain-English walkthrough of the architecture behind the demo — no prior engine knowledge required.</p>
+
+  <div class="section">
+    <h2><span class="num">1</span> The Core Problem</h2>
+    <p>Imagine you want to place 10,000 wooden crates in a warehouse. You could hire 10,000 workers to each hold one crate — but that's massively wasteful. Most of them are just standing there doing nothing.</p>
+    <p>That's what happens when you create a game node for every single block. Godot's scene tree is powerful, but each node carries overhead. At thousands of blocks, it becomes a serious performance problem.</p>
+    <div class="callout analogy">
+      <strong>The Insight</strong>
+      Instead of 10,000 workers, you hire one very efficient foreman who can paint all 10,000 crates in one pass — and keep a clipboard tracking which ones are damaged.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">2</span> Two Separate Jobs</h2>
+    <p>The system deliberately splits block management into two independent concerns, handled by different tools:</p>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">Job 1</div>
+        <div class="card-title">Drawing the blocks</div>
+        <p>Handled by <code>MultiMeshInstance3D</code> — a single Godot node that renders thousands of identical shapes in one efficient GPU draw call.</p>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">Job 2</div>
+        <div class="card-title">Remembering their state</div>
+        <p>Handled by a GDScript <code>Dictionary</code> — essentially a lookup table that maps each block's grid position to a small data record.</p>
+      </div>
+    </div>
+    <p style="margin-top:20px;">Neither job knows much about the other. The renderer doesn't care about hit counts; the data store doesn't care about triangles.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">3</span> The Grid Coordinate System</h2>
+    <p>Every block lives at a position described by three whole numbers — its X, Y, and Z position on an invisible integer grid. In code this is a <code>Vector3i</code>, the "i" standing for integer.</p>
+    <p>This coordinate is used as the key into the dictionary. Want to know if there's a block at position (4, 0, 7)? Ask the dictionary. Want to hit it? Pass that coordinate to <code>hit_block()</code>.</p>
+    <div class="callout">
+      <strong>Why not just use floating point?</strong>
+      Real-world positions in 3D space are floating point numbers (e.g. 4.0000001). Two numbers that look the same might not be exactly equal due to tiny rounding errors, which would silently break dictionary lookups. Integer coordinates are exact, always.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">4</span> The BlockState Record</h2>
+    <p>For each block that exists, the dictionary holds a tiny <code>BlockState</code> object. Right now it tracks just two things:</p>
+    <div class="pill-row">
+      <span class="pill">hits — how many times struck</span>
+      <span class="pill">instance_index — its slot in the renderer</span>
+    </div>
+    <p>The <code>instance_index</code> is the link between the data world and the visual world. It tells the renderer: "when this block changes, update slot number 42 in the MultiMesh buffer."</p>
+    <p>Adding new things to track — block type, owner, temperature, moisture — is as simple as adding a new variable to <code>BlockState</code>. The rest of the system doesn't need to change.</p>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">5</span> What Happens When You Hit a Block</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-icon">🖱️</div>
+        <div class="flow-body">
+          <div class="label">Mouse click</div>
+          <p>A ray is fired from the camera into the 3D scene. Godot's physics engine detects which invisible collider it strikes first.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">📍</div>
+        <div class="flow-body">
+          <div class="label">Coordinate lookup</div>
+          <p>The collider has a metadata tag with its grid coordinate. That coordinate is passed to <code>hit_block()</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">📋</div>
+        <div class="flow-body">
+          <div class="label">State update</div>
+          <p>The dictionary is queried with that coordinate. The <code>BlockState</code> record's <code>hits</code> counter is incremented by one.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">🎨</div>
+        <div class="flow-body">
+          <div class="label">Visual refresh</div>
+          <p>The block's colour is updated in the MultiMesh buffer to reflect its new damage state — green → yellow → orange.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">💥</div>
+        <div class="flow-body">
+          <div class="label">Destruction (if max hits reached)</div>
+          <p>The MultiMesh instance is scaled to zero (invisible), the dictionary entry is erased, and the collider node is freed from the scene tree.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pill-row">
+      <span class="pill green">0 hits — green</span>
+      <span class="pill yellow">1 hit — yellow</span>
+      <span class="pill" style="border-color:#e8a07e;color:#e8a07e;">2 hits — orange</span>
+      <span class="pill red">3 hits — destroyed</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2><span class="num">6</span> The Collider Compromise</h2>
+    <p>There is one place where we do use individual nodes per block: collision shapes. This is necessary because Godot's physics raycasting only works against actual scene nodes.</p>
+    <p>For a 16×16 demo grid that's 256 colliders — totally fine. In a larger game you'd only activate colliders for blocks near the player, swapping them in and out as the player moves. The rendering cost remains flat regardless.</p>
+    <div class="callout">
+      <strong>The Rule of Thumb</strong>
+      Nodes are for things that need the engine's attention every frame — physics, animations, sounds. Blocks that just sit there don't need to be nodes. They're data.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="num">7</span> Why This Scales</h2>
+    <p>Because the renderer and the data store are decoupled, you can grow either side independently. Doubling the number of blocks costs almost nothing in rendering terms — the GPU is already doing one draw call, and one draw call with 2,000 instances is no slower than one with 1,000.</p>
+    <p>The dictionary lookup for any block is also constant time — it doesn't matter if there are 100 blocks or 100,000, finding a specific one takes the same amount of work.</p>
+  </div>
+
+</div>
+</body>
+</html>
