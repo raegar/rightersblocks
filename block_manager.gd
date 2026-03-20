@@ -39,8 +39,22 @@ func _setup_multimesh() -> void:
 
 	_mmi.multimesh = _multimesh
 
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
+	# Shader that reads per-instance custom data as the albedo colour
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+
+void vertex() {
+	// INSTANCE_CUSTOM is the vec4 set by set_instance_custom_data()
+	COLOR = INSTANCE_CUSTOM;
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
 	_multimesh.mesh.surface_set_material(0, mat)
 
 
