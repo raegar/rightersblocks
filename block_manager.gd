@@ -1,7 +1,8 @@
 # block_manager.gd
 extends Node3D
 
-const CHUNK_SIZE := 64
+const CHUNK_SIZE := 256
+const MAX_BLOCKS := 131072
 const MAX_HITS := 3
 const BLOCK_COLORS := [
 	Color(0.4, 0.8, 0.3),  # 0 hits  - healthy green
@@ -11,26 +12,19 @@ const BLOCK_COLORS := [
 
 # Vector3i -> BlockState
 var block_data: Dictionary = {}
-# Vector3i -> StaticBody3D
-var _colliders: Dictionary = {}
 
 var _multimesh: MultiMesh
 var _mmi: MultiMeshInstance3D
+var _free_slots: Array[int] = []
 
 class BlockState:
 	var hits: int = 0
-	var instance_index: int = -1  # index into the MultiMesh buffer
+	var instance_index: int = -1
 
 
 func _ready() -> void:
 	_setup_multimesh()
-	_generate_flat_landscape()
-	_build_colliders()
-
-
-const MAX_BLOCKS := 8192
-
-var _free_slots: Array[int] = []
+	_generate_landscape()
 
 
 func _setup_multimesh() -> void:
@@ -41,11 +35,10 @@ func _setup_multimesh() -> void:
 	_multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	_multimesh.use_custom_data = true
 	_multimesh.mesh = _make_box_mesh()
-	_multimesh.instance_count = MAX_BLOCKS  # allocate once, never resize
+	_multimesh.instance_count = MAX_BLOCKS
 
 	_mmi.multimesh = _multimesh
 
-	# Hide all slots by default
 	for i in MAX_BLOCKS:
 		_hide_slot(i)
 		_free_slots.append(i)
@@ -67,6 +60,12 @@ void fragment() {
 	_multimesh.mesh.surface_set_material(0, mat)
 
 
+func _make_box_mesh() -> BoxMesh:
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.95, 0.95, 0.95)
+	return mesh
+
+
 func _hide_slot(idx: int) -> void:
 	_multimesh.set_instance_transform(
 		idx,
@@ -74,23 +73,16 @@ func _hide_slot(idx: int) -> void:
 	)
 	_multimesh.set_instance_custom_data(idx, Color(0, 0, 0, 0))
 
-func _make_box_mesh() -> BoxMesh:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.95, 0.95, 0.95)
-	return mesh
 
-
-func _generate_flat_landscape() -> void:
+func _generate_landscape() -> void:
 	var coords: Array[Vector3i] = []
 	for x in range(CHUNK_SIZE):
 		for z in range(CHUNK_SIZE):
-			# Simple noise-style height using sine waves
 			var height := int(
 				sin(x * 0.3) * 2.0 +
 				sin(z * 0.3) * 2.0 +
 				sin(x * 0.15 + z * 0.15) * 3.0
 			)
-			# Fill vertically so there are no floating blocks
 			for y in range(height + 1):
 				coords.append(Vector3i(x, y, z))
 	_allocate_instances(coords)
@@ -102,7 +94,6 @@ func place_block(coord: Vector3i) -> void:
 	if block_data.has(coord):
 		return
 	_allocate_instances([coord])
-	_add_collider(coord)
 
 
 func hit_block(coord: Vector3i) -> void:
@@ -122,13 +113,8 @@ func remove_block(coord: Vector3i) -> void:
 		return
 	var state: BlockState = block_data[coord]
 	_hide_slot(state.instance_index)
-	_free_slots.append(state.instance_index)  # return slot for reuse
+	_free_slots.append(state.instance_index)
 	block_data.erase(coord)
-
-	if _colliders.has(coord):
-		_colliders[coord].queue_free()
-		_colliders.erase(coord)
-
 	print("Block %s removed" % coord)
 
 
@@ -138,31 +124,11 @@ func get_block_state(coord: Vector3i) -> BlockState:
 
 # --- Internal helpers ---
 
-func _build_colliders() -> void:
-	for coord in block_data.keys():
-		_add_collider(coord)
-
-
-func _add_collider(coord: Vector3i) -> void:
-	var body := StaticBody3D.new()
-	body.name = "col_%d_%d_%d" % [coord.x, coord.y, coord.z]
-	body.position = Vector3(coord)
-	body.set_meta("grid_coord", coord)
-
-	var shape := CollisionShape3D.new()
-	shape.shape = BoxShape3D.new()
-	body.add_child(shape)
-	add_child(body)
-
-	_colliders[coord] = body
-
-
 func _allocate_instances(coords: Array[Vector3i]) -> void:
 	for coord in coords:
 		if _free_slots.is_empty():
 			push_error("No free MultiMesh slots remaining!")
 			return
-
 		var idx: int = _free_slots.pop_back()
 		var state := BlockState.new()
 		state.instance_index = idx

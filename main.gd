@@ -4,16 +4,23 @@ extends Node3D
 @onready var block_manager: Node3D = $BlockManager
 @onready var camera: Camera3D = $Camera3D
 
+
+
 var _orbit_angle_h := 0.4   # radians horizontal
 var _orbit_angle_v := 0.6   # radians vertical
-var _orbit_distance := 60.0
-var _orbit_target := Vector3(32, 0, 32)
+var _orbit_distance := 0.0
+var _orbit_target := Vector3.ZERO
 
 var _is_dragging := false
 var _last_mouse := Vector2.ZERO
 
+var _fly_speed := 10.0
+var _velocity := Vector3.ZERO
 
 func _ready() -> void:
+	var centre : float = block_manager.CHUNK_SIZE / 2.0
+	_orbit_distance = block_manager.CHUNK_SIZE * 0.1
+	_orbit_target = Vector3(centre, 0, centre)
 	_update_camera()
 
 
@@ -43,31 +50,50 @@ func _input(event: InputEvent) -> void:
 				if event.pressed:
 					_raycast_block(event.position, true)
 
+func _process(delta: float) -> void:
+	var input := Vector3.ZERO
+
+	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
+		input.z -= 1
+	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
+		input.z += 1
+	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
+		input.x -= 1
+	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
+		input.x += 1
+	if Input.is_key_pressed(KEY_E):
+		input.y += 1
+	if Input.is_key_pressed(KEY_Q):
+		input.y -= 1
+
+	if input != Vector3.ZERO:
+		# Move relative to camera's horizontal orientation
+		var basis := Basis(Vector3.UP, _orbit_angle_h)
+		_orbit_target += basis * input.normalized() * _fly_speed * delta
+		_update_camera()
 
 func _raycast_block(screen_pos: Vector2, place_mode: bool) -> void:
 	var origin := camera.project_ray_origin(screen_pos)
-	var direction := camera.project_ray_normal(screen_pos)
+	var direction := camera.project_ray_normal(screen_pos).normalized()
 
-	var space := get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * 50.0)
-	var result := space.intersect_ray(query)
+	var step_size := 0.25
+	var max_distance := 100.0
+	var prev_coord: Vector3i = Vector3i(-9999, -9999, -9999)
+	var distance := 0.0
 
-	if result.is_empty():
-		return
+	while distance < max_distance:
+		var sample := origin + direction * distance
+		var coord: Vector3i = block_manager.world_to_grid(sample)
 
-	var collider = result["collider"]
-	if not collider.has_meta("grid_coord"):
-		return
+		if block_manager.block_data.has(coord):
+			if place_mode:
+				block_manager.place_block(prev_coord)
+			else:
+				block_manager.hit_block(coord)
+			return
 
-	var coord: Vector3i = collider.get_meta("grid_coord")
-	var normal: Vector3 = result["normal"]
-
-	if place_mode:
-		var offset := Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
-		var place_coord: Vector3i = coord + offset
-		block_manager.place_block(place_coord)
-	else:
-		block_manager.hit_block(coord)
+		prev_coord = coord
+		distance += step_size
 
 
 func _update_camera() -> void:
