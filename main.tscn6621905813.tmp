@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3 uid="uid://c7atgsa1f8flw"]
+
+[ext_resource type="Script" uid="uid://dqig7a4l23b0" path="res://main.gd" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://qwft26dvd570" path="res://block_manager.gd" id="2_0xm2m"]
+
+[sub_resource type="Environment" id="Environment_h2yge"]
+background_mode = 1
+background_color = Color(0.740462, 0.854889, 1, 1)
+
+[node name="Node3D" type="Node3D"]
+script = ExtResource("1_ig7tw")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.181377, 0.983414, 0, -0.983414, 0.181377, 0, 1.09459, 0)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_h2yge")
+
+[node name="BlockManager" type="Node3D" parent="."]
+script = ExtResource("2_0xm2m")

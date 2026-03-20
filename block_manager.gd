@@ -1,7 +1,7 @@
 # block_manager.gd
 extends Node3D
 
-const CHUNK_SIZE := 16
+const CHUNK_SIZE := 64
 const MAX_HITS := 3
 const BLOCK_COLORS := [
 	Color(0.4, 0.8, 0.3),  # 0 hits  - healthy green
@@ -28,7 +28,7 @@ func _ready() -> void:
 	_build_colliders()
 
 
-const MAX_BLOCKS := 1024  # adjust as needed
+const MAX_BLOCKS := 8192
 
 var _free_slots: Array[int] = []
 
@@ -84,7 +84,15 @@ func _generate_flat_landscape() -> void:
 	var coords: Array[Vector3i] = []
 	for x in range(CHUNK_SIZE):
 		for z in range(CHUNK_SIZE):
-			coords.append(Vector3i(x, 0, z))
+			# Simple noise-style height using sine waves
+			var height := int(
+				sin(x * 0.3) * 2.0 +
+				sin(z * 0.3) * 2.0 +
+				sin(x * 0.15 + z * 0.15) * 3.0
+			)
+			# Fill vertically so there are no floating blocks
+			for y in range(height + 1):
+				coords.append(Vector3i(x, y, z))
 	_allocate_instances(coords)
 
 

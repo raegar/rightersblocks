@@ -4,10 +4,10 @@ extends Node3D
 @onready var block_manager: Node3D = $BlockManager
 @onready var camera: Camera3D = $Camera3D
 
-var _orbit_distance := 14.0
 var _orbit_angle_h := 0.4   # radians horizontal
 var _orbit_angle_v := 0.6   # radians vertical
-var _orbit_target := Vector3(8, 0, 8)  # centre of the 16x16 grid
+var _orbit_distance := 60.0
+var _orbit_target := Vector3(32, 0, 32)
 
 var _is_dragging := false
 var _last_mouse := Vector2.ZERO
