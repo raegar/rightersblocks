@@ -5,7 +5,7 @@
 
 [sub_resource type="Environment" id="Environment_h2yge"]
 background_mode = 1
-background_color = Color(0.552516, 0.698427, 1, 1)
+background_color = Color(0.740462, 0.854889, 1, 1)
 
 [node name="Node3D" type="Node3D"]
 script = ExtResource("1_ig7tw")

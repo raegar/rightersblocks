@@ -18,12 +18,6 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# Middle mouse drag to orbit
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			_is_dragging = event.pressed
-			_last_mouse = event.position
-
 	if event is InputEventMouseMotion and _is_dragging:
 		var delta: Vector2 = event.position - _last_mouse
 		_last_mouse = event.position
@@ -31,22 +25,23 @@ func _input(event: InputEvent) -> void:
 		_orbit_angle_v = clamp(_orbit_angle_v + delta.y * 0.005, 0.1, 1.4)
 		_update_camera()
 
-	# Scroll to zoom
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_orbit_distance = max(3.0, _orbit_distance - 1.0)
-			_update_camera()
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_orbit_distance = min(30.0, _orbit_distance + 1.0)
-			_update_camera()
-
-	# Left click — hit block
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			_raycast_block(event.position, false)
-		# Right click — place block on top of hit face
-		if event.button_index == MOUSE_BUTTON_RIGHT:
-			_raycast_block(event.position, true)
+	elif event is InputEventMouseButton:
+		match event.button_index:
+			MOUSE_BUTTON_MIDDLE:
+				_is_dragging = event.pressed
+				_last_mouse = event.position
+			MOUSE_BUTTON_WHEEL_UP:
+				_orbit_distance = max(3.0, _orbit_distance - 1.0)
+				_update_camera()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_orbit_distance = min(30.0, _orbit_distance + 1.0)
+				_update_camera()
+			MOUSE_BUTTON_LEFT:
+				if event.pressed:
+					_raycast_block(event.position, false)
+			MOUSE_BUTTON_RIGHT:
+				if event.pressed:
+					_raycast_block(event.position, true)
 
 
 func _raycast_block(screen_pos: Vector2, place_mode: bool) -> void:
@@ -68,7 +63,8 @@ func _raycast_block(screen_pos: Vector2, place_mode: bool) -> void:
 	var normal: Vector3 = result["normal"]
 
 	if place_mode:
-		var place_coord := coord + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
+		var offset := Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
+		var place_coord: Vector3i = coord + offset
 		block_manager.place_block(place_coord)
 	else:
 		block_manager.hit_block(coord)

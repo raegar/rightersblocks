@@ -28,6 +28,11 @@ func _ready() -> void:
 	_build_colliders()
 
 
+const MAX_BLOCKS := 1024  # adjust as needed
+
+var _free_slots: Array[int] = []
+
+
 func _setup_multimesh() -> void:
 	_mmi = MultiMeshInstance3D.new()
 	add_child(_mmi)
@@ -36,16 +41,20 @@ func _setup_multimesh() -> void:
 	_multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	_multimesh.use_custom_data = true
 	_multimesh.mesh = _make_box_mesh()
+	_multimesh.instance_count = MAX_BLOCKS  # allocate once, never resize
 
 	_mmi.multimesh = _multimesh
 
-	# Shader that reads per-instance custom data as the albedo colour
+	# Hide all slots by default
+	for i in MAX_BLOCKS:
+		_hide_slot(i)
+		_free_slots.append(i)
+
 	var shader := Shader.new()
 	shader.code = """
 shader_type spatial;
 
 void vertex() {
-	// INSTANCE_CUSTOM is the vec4 set by set_instance_custom_data()
 	COLOR = INSTANCE_CUSTOM;
 }
 
@@ -57,6 +66,13 @@ void fragment() {
 	mat.shader = shader
 	_multimesh.mesh.surface_set_material(0, mat)
 
+
+func _hide_slot(idx: int) -> void:
+	_multimesh.set_instance_transform(
+		idx,
+		Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
+	)
+	_multimesh.set_instance_custom_data(idx, Color(0, 0, 0, 0))
 
 func _make_box_mesh() -> BoxMesh:
 	var mesh := BoxMesh.new()
@@ -97,14 +113,10 @@ func remove_block(coord: Vector3i) -> void:
 	if not block_data.has(coord):
 		return
 	var state: BlockState = block_data[coord]
-	_multimesh.set_instance_transform(
-		state.instance_index,
-		Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
-	)
-	_multimesh.set_instance_custom_data(state.instance_index, Color(0, 0, 0, 0))
+	_hide_slot(state.instance_index)
+	_free_slots.append(state.instance_index)  # return slot for reuse
 	block_data.erase(coord)
 
-	# Remove the matching collider
 	if _colliders.has(coord):
 		_colliders[coord].queue_free()
 		_colliders.erase(coord)
@@ -138,17 +150,15 @@ func _add_collider(coord: Vector3i) -> void:
 
 
 func _allocate_instances(coords: Array[Vector3i]) -> void:
-	var existing := _multimesh.instance_count
-	_multimesh.instance_count = existing + coords.size()
+	for coord in coords:
+		if _free_slots.is_empty():
+			push_error("No free MultiMesh slots remaining!")
+			return
 
-	for i in coords.size():
-		var coord: Vector3i = coords[i]
-		var idx := existing + i
-
+		var idx: int = _free_slots.pop_back()
 		var state := BlockState.new()
 		state.instance_index = idx
 		block_data[coord] = state
-
 		_refresh_instance(coord, state)
 
 
